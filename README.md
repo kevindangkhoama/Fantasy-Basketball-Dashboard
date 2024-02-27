@@ -1,2 +1,2 @@
-# Fantasy-Football-Dashboard
+# Fantasy-Basketball-Dashboard
 Kevin Ma DS4003
