@@ -298,7 +298,7 @@ def toggle_modal(n_clicks, is_open):
 
 # Run the app
 if __name__ == '__main__':
-    app.run_server(jupyter_mode='tab', debug=True)
+    app.run_server(debug=True)
 
 
 
