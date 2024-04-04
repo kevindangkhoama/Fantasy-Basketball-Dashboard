@@ -165,7 +165,7 @@ app.layout = html.Div([
         children=[
             # nav bar redirect and refresh button
             dbc.NavItem(dbc.NavLink("About", href="/About")),
-            dbc.NavItem(dbc.NavLink("View Table", href="/table"))
+            dbc.NavItem(dbc.NavLink("View Table", href="/table")),
             dbc.Button("Refresh Data", id="refresh-button", color="primary", className="mr-2")
         ],
         brand="Fantasy Basketball Dashboard",
