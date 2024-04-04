@@ -152,6 +152,7 @@ def refresh():
     return cleaned_df, team_name
 
 # %%
+# Call function to get api data and team name
 cleaned_df, team_name = refresh()
 
 # %%
@@ -162,25 +163,29 @@ server = app.server
 app.layout = html.Div([
     dbc.NavbarSimple(
         children=[
+            # nav bar redirect and refresh button
             dbc.NavItem(dbc.NavLink("About", href="/About")),
-            dbc.NavItem(dbc.NavLink("View Table", href="/table")),
+            dbc.NavItem(dbc.NavLink("View Table", href="/table"))
             dbc.Button("Refresh Data", id="refresh-button", color="primary", className="mr-2")
         ],
         brand="Fantasy Basketball Dashboard",
         brand_href="/",
+        # set color
         color="primary",
         dark=True
     ),
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content', children=[
         html.Label("Select Weeks to Display:"),
+        # slider for barplot
         dcc.RangeSlider(
             id='week-slider',
             min=0,
             max=len(cleaned_df['Week'].unique()) - 1,
             marks={i: f'Week{week}' for i, week in enumerate(cleaned_df['Week'].unique())},
-            value=[len(cleaned_df['Week'].unique()) - 5, len(cleaned_df['Week'].unique()) - 1],
+            value=[len(cleaned_df['Week'].unique()) - 5, len(cleaned_df['Week'].unique()) - 1], # last 5 weeks
         ),
+        # player dropdown
         dcc.Dropdown(
             id='player-dropdown',
             options=[{'label': player, 'value': player} for player in cleaned_df['Player'].unique()],
@@ -189,6 +194,8 @@ app.layout = html.Div([
         ),
         dcc.Graph(id='fantasy-points-bar-chart')
     ]),
+    # pop up to signify when refresh is complete
+    # may take a bit since api call is slow
     dbc.Modal(
         [
             dbc.ModalHeader("Data Refreshed"),
@@ -205,6 +212,7 @@ app.layout = html.Div([
     Output('page-content', 'children'),
     [Input('url', 'pathname')]
 )
+# path names for redirects
 def display_page(pathname):
     if pathname == '/table':
         return generate_table_view()
@@ -220,7 +228,7 @@ def generate_table_view():
         dash_table.DataTable(
             id='table',
             columns=[{"name": i, "id": i} for i in cleaned_df.columns],
-            page_size= 20,
+            page_size= 20, # select page size
             data=cleaned_df.to_dict('records'),
             style_data_conditional=[
                 {
@@ -235,6 +243,7 @@ def generate_table_view():
 def generate_home_view():
     return html.Div([
         html.Label("Select Weeks to Display:"),
+        # year slider again
         dcc.RangeSlider(
             id='week-slider',
             min=0,
@@ -244,6 +253,7 @@ def generate_home_view():
             allowCross=False,  # Prevent crossing over
             step=1,  # Allow only integer steps
         ),
+        # player drop down again
         html.Label("Select Players:"),
         dcc.Dropdown(
             id='player-dropdown',
@@ -270,10 +280,10 @@ def update_bar_chart(selected_weeks_index, selected_players):
     # Plotly Express bar chart
     fig = px.bar(selected_data,
                  x='Player', y='Fantasy Points', color="Week",
-                 title='Fantasy Points Bar Chart for Selected Players and Weeks',
+                 title='Fantasy Points Bar Chart for Selected Players and Weeks', # title
                  barmode='group', # Set barmode to 'group' for grouped bars
-                 height=800,
-                 color_discrete_sequence=list(reversed(px.colors.sequential.Blues)))  
+                 height=800, # custom height
+                 color_discrete_sequence=list(reversed(px.colors.sequential.Blues)))  # set colors
 
     
     fig.update_layout(
@@ -284,15 +294,15 @@ def update_bar_chart(selected_weeks_index, selected_players):
     )
     
     return fig
-
+# callback for popup
 @app.callback(
     Output("modal", "is_open"),
     [Input("refresh-button", "n_clicks")],
     [State("modal", "is_open")],
 )
-def toggle_modal(n_clicks, is_open):
+def toggle_modal(n_clicks, is_open): # check when button is clicked if so...
     if n_clicks:
-        refresh()
+        refresh() # refresh api
         return not is_open
     return is_open
 
