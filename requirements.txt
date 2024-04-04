@@ -4,3 +4,5 @@ pandas
 scikit_learn
 plotly
 gunicorn
+espn_api==v0.6.0
+dash-bootstrap-components
