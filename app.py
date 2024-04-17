@@ -1,5 +1,5 @@
 # %%
-# Import Libraries
+# import libraries
 from espn_api.basketball import League
 import pandas as pd
 import dash
@@ -10,225 +10,110 @@ import plotly.express as px
 from raceplotly.plots import barplot
 import plotly.graph_objs as go
 
-# %%
-def refresh():
-    # These variables are required for private leagues
-    # If league is public, these parameters are not required
-    espn_s2 = f"AEBxlh0p0NHPbu6WIY0O0TNX6B7oQkhT1bCnR12c5SvsUf5Dnap49bkneUfyt9h1Y5m1MBalds2N47X5i%2FE6YhYUJDbxumf3HrW1iFK%2BPWOGnTpl%2F0wbLLy7C19hr50jNoma59zfYY5iOKxOvK6yT9cn689C4OoQ%2BTiVm%2FG7TjfaGLFIKIJ8OkuSJBye7xYCgnLh%2BvD5Fbbwgz8pLX6htmu%2BEyilZCOrqQ81zDXUrRQgWhIOOXEx1Uy5d1SOQOPkdfqV%2F6Nsr2jUTvgr2T%2FS9yxs"
-    swid = "{5C675DD8-073A-4E00-AD7A-B926A3F2800B}"
-
-    # Create a league object
-    league = League(league_id=1267411756, year=2024, espn_s2=espn_s2, swid=swid)
-    
-    # Select a team to analyze
-    team_id = 2
-
-    # Create a list to store the data
-    data = []
-    lineup_points_breakdown = []
-    id = 1
-
-    # Iterate over weeks 1 to 20
-    for week in range(1, 21):
-        # Assign the box_score variable
-        box_scores = league.box_scores(matchup_period=week)
-        
-        # Iterate through the box_scores list
-        for box in box_scores:
-            # If the team you are analyizing is the home team, record information regarding team score, name and lineup
-            if box.home_team.team_id == team_id:
-                team_score = box.home_score
-                lineup = box.home_lineup
-                team_name = box.home_team.team_name
-                # Append the team's weekly data to the list
-                data.append({
-                    'Week': week,
-                    'Team Name': team_name,
-                    'Team Score': team_score,
-                    'Lineup': lineup,
-                })
-
-                # Extracting points breakdown for each player in the lineup
-                for player in lineup:
-                    player_name = player.name
-                    player_id = player.playerId
-                    player_points_breakdown = player.points_breakdown
-                    lineup_points_breakdown.append({
-                        'Unique ID': id,
-                        'Week': week,
-                        'Player': player_name,
-                        'Player ID': player_id,
-                        'Points Breakdown': player_points_breakdown
-                    })
-                    id += 1
-                    
-            # If the team you are analyzing is the away team, record information regarding team score, name and lineup
-            elif box.away_team.team_id == team_id:
-                team_score = box.away_score
-                lineup = box.away_lineup
-                team_name = box.away_team.team_name
-                
-                # Append the team's weekly data to the list
-                data.append({
-                    'Week': week,
-                    'Team Name': team_name,
-                    'Team Score': team_score,
-                    'Lineup': lineup,
-                })
-            
-                # Extracting points breakdown for each player in the lineup
-                for player in lineup:
-                    player_name = player.name
-                    playr_id = player.playerId
-                    player_points_breakdown = player.points_breakdown
-                    lineup_points_breakdown.append({
-                        'Unique ID': id,
-                        'Week': week,
-                        'Player': player_name,
-                        'Player ID': playr_id,
-                        'Points Breakdown': player_points_breakdown
-                    })
-                    id += 1
-            
-        # Print the scores for the specified team to ensure that you are analyzing the correct team and are accessing the correct data
-        # print(f"Week {week}: {team_name} scored {team_score} points with lineup {lineup}")
-
-    # Create a pandas dataframe from the data list
-    df_player = pd.DataFrame(data)
-    points_breakdown = pd.DataFrame(lineup_points_breakdown)
-
-    # We use the explode function to separate the lineup column into individual rows by the comma to split the players
-    df_player = df_player.explode('Lineup')
-
-    # Add an ID column to the dataframe
-    df_player['Unique ID'] = range(1, len(df_player) + 1)
-
-    # Convert the lineup column to a string to split the column into two columns
-    df_player['Lineup'] = df_player['Lineup'].astype(str)
-
-    # Split the lineup column into two columns: Player and Points
-    df_player[['Player', 'Fantasy Points']] = df_player['Lineup'].str.split(', ', expand=True)
-
-    # Remove the 'Player(' and ')' from the Player column
-    df_player['Player'] = df_player['Player'].str.replace(r'Player\(', '', regex=True).astype(str)
-
-    # Remove the 'points(' and ')' from the Points column
-    df_player['Fantasy Points'] = df_player['Fantasy Points'].str.replace(r'.*points:([\d.]+)\)', r'\1', regex=True).astype(float)
-
-    # Create a new column for the weekly contribution percentage
-    # df_player['Weekly Contribution Percentage'] = round(df_player['Fantasy Points'] / df_player['Team Score'] * 100, 2)
-
-    # Drop the original Lineup, Team Name and Team Score columns
-    df_player.drop(columns=['Lineup', 'Team Name', 'Team Score'], inplace=True)
-                
-    # Work for Second DF
-    # Define a function to extract each key's value from the dictionary
-    def extract_stat(stat_dict, stat):
-        return stat_dict.get(stat, 0)  # If the stat is not present, default to 0
-
-    # Extracting all unique stats
-    unique_stats = set(stat for stat_dict in points_breakdown['Points Breakdown'] for stat in stat_dict.keys())
-
-    # Creating new columns for each stat
-    for stat in unique_stats:
-        points_breakdown[stat] = points_breakdown['Points Breakdown'].apply(lambda x: extract_stat(x, stat))
-        
-    # Drop the 'points_breakdown' column
-    points_breakdown.drop(columns=['Points Breakdown'], inplace=True)
-    
-    # Merge two dataframes based on ID
-    cleaned_df = points_breakdown.merge(df_player, how='left', on='Unique ID')
-
-    # Drop the Week_y and Player_y columns
-    cleaned_df.drop(columns=['Week_y', 'Player_y'], inplace=True)
-    cleaned_df.rename(columns={'Week_x': 'Week', 'Player_x': 'Player'}, inplace=True)
-
-    # Change the data types of the columns to category
-    cleaned_df['Week'] = cleaned_df['Week'].astype('str')
-    cleaned_df['Player'] = cleaned_df['Player'].astype('category')
-
-    # Check to see if merge was successful
-    # print(cleaned_df.shape)
-    
-    team_name = f"{team_name}"
-    return cleaned_df, team_name
+# Import functions from data folder
+from data.espn_api_functions import *
 
 # %%
-cleaned_df, team_name = refresh()
+# fill in your ESPN credentials
+espn_s2 = f"AEBxlh0p0NHPbu6WIY0O0TNX6B7oQkhT1bCnR12c5SvsUf5Dnap49bkneUfyt9h1Y5m1MBalds2N47X5i%2FE6YhYUJDbxumf3HrW1iFK%2BPWOGnTpl%2F0wbLLy7C19hr50jNoma59zfYY5iOKxOvK6yT9cn689C4OoQ%2BTiVm%2FG7TjfaGLFIKIJ8OkuSJBye7xYCgnLh%2BvD5Fbbwgz8pLX6htmu%2BEyilZCOrqQ81zDXUrRQgWhIOOXEx1Uy5d1SOQOPkdfqV%2F6Nsr2jUTvgr2T%2FS9yxs"
+swid = "{5C675DD8-073A-4E00-AD7A-B926A3F2800B}"
+team_id = 2
+league_id = 1267411756
+year = 2024
+
+# call functions
+cleaned_df, team_name, team_logo = get_league_info(espn_s2, swid, team_id, league_id, year)
+team_url = get_league_url(league_id, team_id, year)
+
+# copy needed for other graphs to work
 df = cleaned_df.copy()
 
 # %%
-# Initialize Dash app
+# initialize Dash app
 app = dash.Dash(__name__, suppress_callback_exceptions = True, external_stylesheets=[dbc.themes.SANDSTONE])
 server = app.server
 
-# Define app layout
+# define app layout
 app.layout = html.Div([
-    dbc.NavbarSimple(
+    dbc.Navbar(
         children=[
-            dbc.NavItem(dbc.NavLink("About", href="/About")),
-            dbc.NavItem(dbc.NavLink("View Table", href="/Table")),
-            dbc.NavItem(dbc.NavLink("Bar Charts", href="/Home")),
-            dbc.NavItem(dbc.NavLink("Polar Chart", href="/Polar-Chart")), 
-            dbc.Button("Refresh Data", id="refresh-button", color="primary")
+            html.A(
+                dbc.Row(
+                    [
+                        dbc.Col(html.Img(src=team_logo, height="50px", style={"border-radius": "50%"}), width="auto"),  # logo
+                        dbc.Col(dbc.NavbarBrand(f"{team_name}'s Fantasy Basketball Dashboard", className="ms-2"), width="auto"),  # brand
+                    ],
+                    align="center",
+                ),
+                href=team_url, # set the url to the team's ESPN page
+            ),
+            dbc.Nav(
+                [   # navbar items
+                    dbc.NavItem(dbc.NavLink("About", href="/About")),
+                    dbc.NavItem(dbc.NavLink("View Table", href="/Table")),
+                    dbc.NavItem(dbc.NavLink("Bar Charts", href="/Home")),
+                    dbc.NavItem(dbc.NavLink("Polar Chart", href="/Polar-Chart")), 
+                ],
+                navbar=True,
+                className="ms-auto flex-nowrap mt-3 mt-md-0",  # adjusted class
+            ),
+            dbc.Button("Refresh Data", id="refresh-button", color="primary", className="ml-3"),  # moved to the right
         ],
-        brand="Fantasy Basketball Dashboard",
-        # brand_href="/",
         color="primary",
         dark=True
     ),
-    dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content', children=[
+    dcc.Location(id="url", refresh=False),
+    html.Div(id="page-content", children=[
         html.Label("Select Stats:"),
         dcc.Dropdown(
-        id='stat-dropdown',
+        id="stat-dropdown",
         options=[ # add options for different stats
-            {'label': 'Fantasy Points', 'value': 'Fantasy Points'},
-            {'label': 'Points (PTS)', 'value': 'PTS'},
-            {'label': 'Assists (AST)', 'value': 'AST'},
-            {'label': 'Rebounds (REB)', 'value': 'REB'},
-            {'label': 'Blocks (BLK)', 'value': 'BLK'},
-            {'label': 'Steals (STL)', 'value': 'STL'},
-            {'label': '3-Pointers Made (3PTM)', 'value': '3PTM'},
-            {'label': 'Field Goals Made (FGM)', 'value': 'FGM'},
-            {'label': 'Free Throws Made (FTM)', 'value': 'FTM'}
+            {"label": "Fantasy Points", "value": "Fantasy Points"},
+            {"label": "Points (PTS)", "value": "PTS"},
+            {"label": "Assists (AST)", "value": "AST"},
+            {"label": "Rebounds (REB)", "value": "REB"},
+            {"label": "Blocks (BLK)", "value": "BLK"},
+            {"label": "Steals (STL)", "value": "STL"},
+            {"label": "3-Pointers Made (3PTM)", "value": "3PTM"},
+            {"label": "Field Goals Made (FGM)", "value": "FGM"},
+            {"label": "Free Throws Made (FTM)", "value": "FTM"}
         ],
-        value='Fantasy Points'  # Default value
+        value="Fantasy Points"  # default value
     ),
-    dcc.Graph(id='race-plot'),
-    html.Br(), 
-    dcc.Graph(id='fantasy-points-bar-chart'),
+    dcc.Graph(id="race-plot"),
+    html.Hr(), 
+    dcc.Graph(id="fantasy-points-bar-chart"),
         html.Label("Select Stats:"),
         dcc.Dropdown(
-        id='bar-chart-dropdown',
+        id="bar-chart-dropdown",
         options=[ # add options for different stats
-            {'label': 'Fantasy Points', 'value': 'Fantasy Points'},
-            {'label': 'Points (PTS)', 'value': 'PTS'},
-            {'label': 'Assists (AST)', 'value': 'AST'},
-            {'label': 'Rebounds (REB)', 'value': 'REB'},
-            {'label': 'Blocks (BLK)', 'value': 'BLK'},
-            {'label': 'Steals (STL)', 'value': 'STL'},
-            {'label': '3-Pointers Made (3PTM)', 'value': '3PTM'},
-            {'label': 'Field Goals Made (FGM)', 'value': 'FGM'},
-            {'label': 'Free Throws Made (FTM)', 'value': 'FTM'}
+            {"label": "Fantasy Points", "value": "Fantasy Points"},
+            {"label": "Points (PTS)", "value": "PTS"},
+            {"label": "Assists (AST)", "value": "AST"},
+            {"label": "Rebounds (REB)", "value": "REB"},
+            {"label": "Blocks (BLK)", "value": "BLK"},
+            {"label": "Steals (STL)", "value": "STL"},
+            {"label": "3-Pointers Made (3PTM)", "value": "3PTM"},
+            {"label": "Field Goals Made (FGM)", "value": "FGM"},
+            {"label": "Free Throws Made (FTM)", "value": "FTM"}
         ],
-        value='Fantasy Points'  # Default value
+        value="Fantasy Points"  # default value
     ),
         html.Label("Select Weeks to Display:"),
         dcc.RangeSlider(
-            id='week-slider',
+            id="week-slider",
             min=0,
-            max=len(cleaned_df['Week'].unique()) - 1,
-            marks={i: f'Week{week}' for i, week in enumerate(cleaned_df['Week'].unique())},
-            value=[len(cleaned_df['Week'].unique()) - 5, len(cleaned_df['Week'].unique()) - 1],
-            allowCross=False,  # Prevent crossing over
-            step=1,  # Allow only integer steps
+            max=len(cleaned_df["Week"].unique()) - 1,
+            marks={i: f"Week{week}" for i, week in enumerate(cleaned_df["Week"].unique())},
+            value=[len(cleaned_df["Week"].unique()) - 5, len(cleaned_df["Week"].unique()) - 1],
+            allowCross=False,  # prevent crossing over
+            step=1,  # allow only integer steps
         ),
         dcc.Dropdown(
-            id='player-dropdown',
-            options=[{'label': player, 'value': player} for player in cleaned_df['Player'].unique()],
-            value=list(cleaned_df['Player'].unique()),  # Select all players by default
-            multi=True  # Allow multiple selections
+            id="player-dropdown",
+            options=[{"label": player, "value": player} for player in cleaned_df["Player"].unique()],
+            value=list(cleaned_df["Player"].unique()),  # select all players by default
+            multi=True  # allow multiple selections
         ),
     ]),
     dbc.Modal(
@@ -242,23 +127,23 @@ app.layout = html.Div([
     )
 ])
 
-# Define callback to update page content based on URL
+# define callback to update page content based on URL
 @app.callback(
-    Output('page-content', 'children'),
-    [Input('url', 'pathname')]
+    Output("page-content", "children"),
+    [Input("url", "pathname")]
 )
 def display_page(pathname):
-    if pathname == '/Table':
+    if pathname == "/Table":
         return generate_table_view()
-    if pathname == '/About':
+    if pathname == "/About":
         return generate_about_view()
-    if pathname == '/Polar-Chart':  
+    if pathname == "/Polar-Chart":  
         return generate_polar_chart_view()
     else:
         return generate_home_view()
 
 
-# Function to generate about view
+# function to generate about view
 def generate_about_view():
     return html.Div([
         html.H1("About"),
@@ -280,59 +165,65 @@ def generate_about_view():
             ".",
         ]),
         html.Br(),
-        html.P("Check out the GitHub repository for more details"), # Add a link to the GitHub repository
+        html.P("Check out the GitHub repository for more details"), # add a link to the GitHub repository
         html.A(
             html.Img(
                 src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-                style={'width': '50px', 'height': 'auto'}
+                style={"width": "50px", "height": "auto"}
             ),
             href="https://github.com/kevindangkhoama/Fantasy-Basketball-Dashboard",
             target="_blank"
         ),
-    ], style={'margin': '20px'})
-
-
-
-
+    ], style={"margin": "20px"})
     
-# Function to generate table view
+# function to generate table view
 def generate_table_view():
     return html.Div([
-        html.H2(f"{team_name}'s Player Data Table"),
+        html.H1(f"{team_name}'s Player Data Table"),
         dash_table.DataTable(
-            id='table',
+            id="table",
             columns=[{"name": i, "id": i} for i in cleaned_df.columns], # Define columns
             page_size=20,
-            data=cleaned_df.to_dict('records'), # Convert the DataFrame to a dictionary
+            data=cleaned_df.to_dict("records"), # Convert the DataFrame to a dictionary
+            style_data_conditional=[
+                {
+                    "if": {"row_index": "odd"},  # apply style to odd rows
+                    "backgroundColor": "rgb(240, 240, 240)"  # alternate row color
+                }
+            ],
         )
     ])
 
 def generate_polar_chart_view():
     return html.Div([
-    # Player and UI components section
-    html.Div([
-        html.Img(id='player-image', style={'width': '100%', 'height': 'auto'}),
-        html.Label("Select Player:"),
-        dcc.Dropdown(
-            id='player-dropdown',
-            options=[{'label': player, 'value': player} for player in df['Player'].unique()], # Add options for players
-            value=df['Player'].iloc[9]
-        ),
-        html.Label("Select Weeks:"),
-        dcc.Checklist(
-            id='week-checklist',
-            options=[{'label': week, 'value': week} for week in df['Week'].unique()], # Add options for weeks
-            inline=True,
-            className="form-check"
-        ),
-        html.Button("Select All Weeks", id="select-all-button", n_clicks=0, className="btn btn-primary"),
-    ], style={'width': '18%', 'display': 'inline-block', 'vertical-align': 'top'}),
+        # player and UI components section
+        html.Div([
+            html.Img(id="player-image", style={"width": "100%", "height": "auto"}),
+            html.Label("Select Player:"),
+            dcc.Dropdown(
+                id='player-dropdown',
+                options=[{"label": player, "value": player} for player in df["Player"].unique()], # add options for players
+                value=df["Player"].iloc[9]
+            ),
+            html.Label("Select Weeks:"),
+            dcc.Checklist(
+                id="week-checklist",
+                options=[{"label": week, "value": week} for week in df["Week"].unique()], # add options for weeks
+                inline=True,
+                value = list(df["Week"].unique()[:5]),
+                className="form-check"
+            ),
+            html.Div([
+                html.Button("Deselect ALL Weeks", id="deselect-all-button", n_clicks=0, className="btn btn-primary", style={'width': '65%', 'marginRight': '5px'}),
+                html.Button("Select All Weeks", id="select-all-button", n_clicks=1, className="btn btn-primary", style={"width": "65%", "marginLeft": '5px'}),
+            ], style={'display': 'flex'}),
+        ], style={'width': '18%', 'display': 'inline-block', 'vertical-align': 'top'}),
 
-    # Polar chart section
-    html.Div([
-        dcc.Graph(id='polar-chart', style={'width': '100%', 'height': '100vh'})
-    ], style={'width': '70%', 'display': 'inline-block'}),
-], style={'width': '100%'})
+        # Polar chart section
+        html.Div([
+            dcc.Graph(id='polar-chart', style={'width': '100%', 'height': '100vh'})
+        ], style={'width': '70%', 'display': 'inline-block'}),
+    ], style={'width': '100%'})
 
 
 
@@ -343,9 +234,9 @@ def generate_polar_chart_view():
 )
 def update_player_image(selected_player):
     if selected_player is None:
-        return ''  # Return an empty string if no player is selected
+        return ""
     player_id = df[df['Player'] == selected_player]['Player ID'].iloc[0]
-    return f"https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/{player_id}.png"
+    return get_player_picture(player_id)
 
 
 # Define callback to update weeks based on selected player
@@ -359,16 +250,23 @@ def update_week_options(selected_player):
     weeks = df[df['Player'] == selected_player]['Week'].unique()
     return [{'label': week, 'value': week} for week in weeks]
 
-# Define callback to select all weeks
+# Define callback to handle deselecting/selecting all weeks
 @app.callback(
     Output('week-checklist', 'value'),
-    [Input('select-all-button', 'n_clicks')],
-    [State('week-checklist', 'options')]
+    [Input('deselect-all-button', 'n_clicks'),
+     Input('select-all-button', 'n_clicks')],
+    [State('week-checklist', 'options')],
 )
-def select_all_weeks(n_clicks, options):
-    if n_clicks > 0:
-        return [option['value'] for option in options]
-    return []
+def handle_all_weeks(n_clicks_deselect, n_clicks_select, options):
+    ctx = dash.callback_context
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]  # Get the ID of the clicked button
+    if button_id == 'deselect-all-button':
+        return []  # Deselect all weeks
+    elif button_id == 'select-all-button':
+        return [option['value'] for option in options]  # Select all weeks
+    else:
+        return dash.no_update  # Maintain the current value if neither button is clicked
+
 
 # Define callback to update polar chart
 @app.callback(
@@ -381,11 +279,11 @@ def update_polar_chart(selected_weeks, selected_player):
 
     # Calculate percentage contribution for each stat
     for column in df.columns[4:-1]:  # Exclude the first four columns and the last one (Fantasy Points)
-        df[f'{column}_Percentage'] = (df[column] / df['Fantasy Points']) * 100
+        df[f'{column} %'] = (df[column] / df['Fantasy Points']) * 100
 
-    desired_columns = ['Player ID', 'Week', 'Player'] + [col for col in df.columns if col.endswith('_Percentage')]
+    desired_columns = ['Player ID', 'Week', 'Player'] + [col for col in df.columns if col.endswith('%')]
     df_percentage = df[desired_columns]
-    df_percentage = df_percentage.drop(columns=['FTA_Percentage', 'FGM_Percentage', 'TO_Percentage', 'FTM_Percentage', '3PTM_Percentage'], inplace=True) 
+    df_percentage = df_percentage.drop(columns=['FTA %', 'FGM %', 'TO %', 'FTM %', '3PTM %'], inplace=True) 
 
     # Check if selected weeks or player is None
     if not selected_weeks or selected_player is None: # If either is None, return an empty figure
@@ -401,7 +299,7 @@ def update_polar_chart(selected_weeks, selected_player):
     
     filtered_df = df[(df['Week'].isin(selected_weeks)) & (df['Player'] == selected_player)] # Filter the DataFrame based on selected weeks and player
     
-    categories = ['BLK_Percentage', 'REB_Percentage', 'STL_Percentage', 'AST_Percentage', 'PTS_Percentage']
+    categories = ['BLK %', 'REB %', 'STL %', 'AST %', 'PTS %']
     
     # Calculate the mean of selected weeks' percentages
     averaged_values = filtered_df[categories].mean().tolist()
@@ -446,7 +344,7 @@ def generate_home_view():
         value='Fantasy Points'  # Default value
     ),
     dcc.Graph(id='race-plot'),
-    html.Br(),
+    html.Hr(),
     dcc.Graph(id='fantasy-points-bar-chart'),
             html.Label("Select Stats:"),
             dcc.Dropdown(
@@ -559,19 +457,19 @@ def update_race_plot(selected_stat):
     my_raceplot = barplot(cumulative_df,
                           item_column='Player',
                           value_column=selected_stat,
-                          top_entries=10,
+                          top_entries=15,
                           item_color=colors, # add the color dictionary
                           time_column='Week')
 
     # Get the updated race plot
-    fig = my_raceplot.plot(title=f'Bar Chart Race by Top 10 {selected_stat}', # add a title
+    fig = my_raceplot.plot(title=f'Bar Chart Race by Top 15 {selected_stat}', # add a title
                            item_label='Players',
                            value_label=selected_stat, # add a label for the value
                            time_label='Week: ', # add a label for the time
                            frame_duration=800)  # adjust frame duration here
     
     fig.update_layout(
-        height = 500, # custom height
+        height = 650, # custom height
         xaxis=dict(showgrid=True, gridcolor='lightgrey'), # show only vertical gridlines
     )
     
@@ -617,13 +515,13 @@ def update_bar_chart(selected_weeks_index, selected_players, selected_stat):  # 
 )
 def toggle_modal(n_clicks, is_open): # check when the button is clicked if so...
     if n_clicks:
-        refresh() # refresh api
+        cleaned_df, team_name, team_logo = get_league_info(espn_s2, swid, team_id, league_id, year) # refresh api
         return not is_open
     return is_open
 
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(jupyter_mode='tab', debug=True)
 
 
 
