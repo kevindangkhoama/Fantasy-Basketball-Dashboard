@@ -492,13 +492,14 @@ def update_bar_chart(selected_weeks_index, selected_players, selected_stat):  # 
 
     # Plotly Express bar chart
     fig = px.bar(selected_data,
-                 x='Players', y=selected_stat, color="Week", 
+                 x='Player', y=selected_stat, color="Week", 
                  title=f'{selected_stat} Bar Chart for Selected Players and Weeks',  # dynamic title based on selected stat
                  barmode='group', # set the bar mode to group
                  height=500, # custom height
                  color_discrete_sequence=list(reversed(px.colors.sequential.Blues))) # set colors
 
     fig.update_layout(
+        xaxis_title="Players",
         xaxis_tickangle=45, # rotate 45 degrees
         plot_bgcolor='white', # set plot background to white
         xaxis=dict(showgrid=False), # turn off horizontal gridlines 
