@@ -492,7 +492,7 @@ def update_bar_chart(selected_weeks_index, selected_players, selected_stat):  # 
 
     # Plotly Express bar chart
     fig = px.bar(selected_data,
-                 x='Player', y=selected_stat, color="Week", 
+                 x='Players', y=selected_stat, color="Week", 
                  title=f'{selected_stat} Bar Chart for Selected Players and Weeks',  # dynamic title based on selected stat
                  barmode='group', # set the bar mode to group
                  height=500, # custom height
