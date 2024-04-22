@@ -163,4 +163,4 @@ if __name__ == "__main__":
 
     player_id = 4065663
     test5 = get_player_picture(player_id)
-    print(5)
+    print(test5)
