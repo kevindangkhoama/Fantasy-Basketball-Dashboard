@@ -166,6 +166,6 @@ if __name__ == "__main__":
     test4 = get_league_url(league_id, team_id, year)
     print(test4)
 
-    # player_id = 4065663
-    # test5 = get_player_picture(player_id)
-    # print(test5)
+    player_id = 4065663
+    test5 = get_player_picture(player_id)
+    print(test5)
