@@ -3,6 +3,7 @@ numpy
 pandas
 plotly
 gunicorn
-espn_api==0.35.0
+# espn_api==0.35.0
+git+https://github.com/kevindangkhoama/espn-api
 dash-bootstrap-components
 raceplotly
